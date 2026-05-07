@@ -1011,6 +1011,7 @@ document.write('<link rel="manifest" href="' + manifestURL + '">');
               <th>Nome</th>
               <th>Telefone</th>
               <th>Linha Ativa Até</th>
+              <th>Acesso</th>
               <th>Adicionado</th>
               <th>Ações</th>
             </tr>
@@ -1158,6 +1159,20 @@ document.write('<link rel="manifest" href="' + manifestURL + '">');
     <div class="field" style="margin-top:16px">
       <label>Linha Ativa Até <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)">(opcional)</span></label>
       <input type="date" id="m-expiry">
+    </div>
+    <div style="margin-top:16px;border-top:1px solid var(--line);padding-top:14px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:12px">Acesso do Cliente <span style="font-weight:400;text-transform:none;letter-spacing:0">(opcional)</span></div>
+      <div class="field">
+        <label>Utilizador</label>
+        <input type="text" id="m-cuser" placeholder="Ex: joao.silva" autocomplete="off">
+      </div>
+      <div class="field" style="margin-top:12px">
+        <label>Password</label>
+        <div style="position:relative">
+          <input type="password" id="m-cpass" placeholder="Password do cliente" autocomplete="off" style="padding-right:40px">
+          <button type="button" onclick="togglePassVis()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px;padding:0" id="m-cpass-eye">👁</button>
+        </div>
+      </div>
     </div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
@@ -1494,6 +1509,13 @@ function renderTable() {
       </td>
       <td><span class="phone-tag">📞 ${escHtml(c.tel)}</span></td>
       <td>${expiryBadge(c)}</td>
+      <td>
+        ${c.clientUser ? `<div style="font-size:12px;line-height:1.6">
+          <span style="color:var(--muted)">👤</span> ${escHtml(c.clientUser)}<br>
+          <span style="color:var(--muted)">🔑</span> <span style="letter-spacing:1px">••••••</span>
+          <button onclick="copyPass(${c.id})" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:11px;padding:0 4px" title="Copiar password">📋</button>
+        </div>` : '<span style="color:var(--muted);font-size:12px">—</span>'}
+      </td>
       <td style="color:var(--muted);font-size:12px">${c.date}</td>
       <td>
         <div class="row-actions">
@@ -1520,11 +1542,15 @@ function openModal(id = null) {
     document.getElementById('m-nome').value = c.nome;
     document.getElementById('m-tel').value = c.tel;
     document.getElementById('m-expiry').value = c.expiryDate || '';
+    document.getElementById('m-cuser').value = c.clientUser || '';
+    document.getElementById('m-cpass').value = c.clientPass || '';
   } else {
     document.getElementById('modal-title').textContent = 'Novo Cliente';
     document.getElementById('m-nome').value = '';
     document.getElementById('m-tel').value = '';
     document.getElementById('m-expiry').value = '';
+    document.getElementById('m-cuser').value = '';
+    document.getElementById('m-cpass').value = '';
   }
   document.getElementById('modal-overlay').classList.add('open');
   setTimeout(() => document.getElementById('m-nome').focus(), 100);
@@ -1535,7 +1561,20 @@ function openEdit(id) { openModal(id); }
 function closeModal() {
   document.getElementById('modal-overlay').classList.remove('open');
   editingId = null;
+  const eye = document.getElementById('m-cpass');
+  if (eye) eye.type = 'password';
 }
+function togglePassVis() {
+  const inp = document.getElementById('m-cpass');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+window.togglePassVis = togglePassVis;
+function copyPass(id) {
+  const c = clients.find(x => x.id === id);
+  if (!c || !c.clientPass) return;
+  navigator.clipboard.writeText(c.clientPass).then(() => showToast('Password copiada!', 'success'));
+}
+window.copyPass = copyPass;
 
 document.getElementById('modal-overlay').addEventListener('click', e => {
   if (e.target === e.currentTarget) closeModal();
@@ -1546,9 +1585,11 @@ document.getElementById('m-tel').addEventListener('keydown', e => {
 });
 
 async function saveClient() {
-  const nome   = document.getElementById('m-nome').value.trim();
-  const tel    = document.getElementById('m-tel').value.trim();
-  const expiry = document.getElementById('m-expiry').value; // YYYY-MM-DD or ''
+  const nome      = document.getElementById('m-nome').value.trim();
+  const tel       = document.getElementById('m-tel').value.trim();
+  const expiry    = document.getElementById('m-expiry').value;
+  const clientUser = document.getElementById('m-cuser').value.trim();
+  const clientPass = document.getElementById('m-cpass').value.trim();
   if (!nome) { showToast('Preencha o nome do cliente.', 'error'); return; }
 
   const today = new Date();
@@ -1561,12 +1602,16 @@ async function saveClient() {
       clients[idx].tel  = tel;
       if (expiry) clients[idx].expiryDate = expiry;
       else delete clients[idx].expiryDate;
+      if (clientUser) clients[idx].clientUser = clientUser; else delete clients[idx].clientUser;
+      if (clientPass) clients[idx].clientPass = clientPass; else delete clients[idx].clientPass;
       await saveClientToFirestore(clients[idx]);
       showToast('Cliente atualizado com sucesso!', 'success');
     } else {
       const newId = clients.length ? Math.max(...clients.map(c => c.id)) + 1 : 1;
       const newClient = { id: newId, nome, tel, date: dateStr };
       if (expiry) newClient.expiryDate = expiry;
+      if (clientUser) newClient.clientUser = clientUser;
+      if (clientPass) newClient.clientPass = clientPass;
       await saveClientToFirestore(newClient);
       showToast('Cliente adicionado com sucesso!', 'success');
     }
