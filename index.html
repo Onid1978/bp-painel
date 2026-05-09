@@ -1446,7 +1446,7 @@ function updateStats() {
   const addedToday = clients.filter(c => c.date === todayStr).length;
   document.getElementById('stat-total').textContent = clients.length;
   document.getElementById('stat-today').textContent = addedToday;
-  const last = clients[clients.length - 1];
+  const last = clients.slice().sort((a, b) => b.id - a.id)[0];
   document.getElementById('stat-last').textContent = last ? last.nome.split(' ')[0] : '—';
   renderAlerts();
 }
