@@ -963,6 +963,7 @@ document.write('<link rel="manifest" href="' + manifestURL + '">');
           <div class="toggle-thumb"></div>
         </div>
       </button>
+      <button class="btn-logout" onclick="askResetHistorico()" style="border-color:#5a4a20;color:#e09060;">📋 Limpar Histórico</button>
       <button class="btn-logout" onclick="askReset()" style="border-color:#5a2020;color:#e06060;">🗑 Apagar Dados</button>
       <button class="btn-logout" onclick="doLogout()">⎋ &nbsp;Terminar Sessão</button>
     </div>
@@ -1776,6 +1777,9 @@ async function addCredits() {
   const newExp = new Date(base);
   newExp.setMonth(newExp.getMonth() + amt);
 
+  // Save the OLD expiry (before renewal) for reporting — this is the month the client was renewing for
+  const oldExpiry = c.expiryDate ? new Date(c.expiryDate).toLocaleDateString('pt-PT') : new Date().toLocaleDateString('pt-PT');
+
   clients[idx].credits = (c.credits || 0) + amt;
   clients[idx].expiryDate = newExp.toISOString().split('T')[0];
   if (!clients[idx].creditsHistory) clients[idx].creditsHistory = [];
@@ -1783,7 +1787,8 @@ async function addCredits() {
     date: new Date().toLocaleDateString('pt-PT'),
     amount: amt,
     cost: amt * 6,
-    expiry: newExp.toLocaleDateString('pt-PT')
+    expiry: oldExpiry,
+    newExpiry: newExp.toLocaleDateString('pt-PT')
   });
 
   // Check saldo
@@ -1823,7 +1828,7 @@ function renderCreditsHistory(c) {
         <div style="text-align:right;display:flex;align-items:center;gap:8px">
           <div>
             <div class="history-date">${h.date}</div>
-            <div style="font-size:11px;color:var(--muted)" id="hist-expiry-${i}">até ${h.expiry || '—'}</div>
+            <div style="font-size:11px;color:var(--muted)" id="hist-expiry-${i}">renovou: ${h.expiry || '—'}${h.newExpiry ? ` → ${h.newExpiry}` : ''}</div>
           </div>
           <button onclick="editHistoryExpiry(${i})" style="background:none;border:1px solid var(--line);border-radius:4px;cursor:pointer;color:var(--muted);font-size:11px;padding:3px 7px" title="Editar data de expiração">✏️</button>
         </div>
@@ -2124,6 +2129,28 @@ async function saveConfig() {
 }
 
 // ── RESET ──
+function askResetHistorico() {
+  if (!confirm('Tens a certeza que queres apagar o histórico de créditos de todos os clientes?\n\nOs clientes, datas de linha ativa, user e password mantêm-se.')) return;
+  confirmResetHistorico();
+}
+
+async function confirmResetHistorico() {
+  try {
+    for (const c of clients) {
+      if (c.creditsHistory && c.creditsHistory.length > 0) {
+        c.creditsHistory = [];
+        c.credits = 0;
+        await saveClientToFirestore(c);
+      }
+    }
+    renderTable();
+    showToast('Histórico de créditos apagado com sucesso!', 'success');
+  } catch(e) {
+    showToast('Erro ao apagar histórico.', 'error');
+  }
+}
+window.askResetHistorico = askResetHistorico;
+
 function askReset() {
   document.getElementById('reset-overlay').classList.add('open');
 }
