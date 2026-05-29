@@ -1009,9 +1009,9 @@ document.write('<link rel="manifest" href="' + manifestURL + '">');
           <thead>
             <tr>
               <th>#</th>
-              <th>Nome</th>
+              <th onclick="toggleSort('nome')" style="cursor:pointer;user-select:none">Nome <span id="sort-icon-nome"></span></th>
               <th>Telefone</th>
-              <th>Linha Ativa Até</th>
+              <th onclick="toggleSort('expiry')" style="cursor:pointer;user-select:none">Linha Ativa Até <span id="sort-icon-expiry"></span></th>
               <th>Acesso</th>
               <th>Adicionado</th>
               <th>Ações</th>
@@ -1483,11 +1483,41 @@ function expiryBadge(c) {
   return `<span class="expiry-badge expiry-active">✅ ${exp.toLocaleDateString('pt-PT')} (${diffDays}d)</span>`;
 }
 
+let sortField = null; // 'nome' or 'expiry'
+let sortDir = 'asc';
+
+function toggleSort(field) {
+  if (sortField === field) {
+    sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+  } else {
+    sortField = field;
+    sortDir = 'asc';
+  }
+  // Update icons
+  document.getElementById('sort-icon-nome').textContent   = sortField === 'nome'   ? (sortDir === 'asc' ? ' ↑' : ' ↓') : '';
+  document.getElementById('sort-icon-expiry').textContent = sortField === 'expiry' ? (sortDir === 'asc' ? ' ↑' : ' ↓') : '';
+  renderTable();
+}
+window.toggleSort = toggleSort;
+
 function renderTable() {
   const q = document.getElementById('search-input').value.toLowerCase();
-  const filtered = clients.filter(c =>
-    c.nome.toLowerCase().includes(q) || c.tel.toLowerCase().includes(q)
+  let filtered = clients.filter(c =>
+    c.nome.toLowerCase().includes(q) || (c.tel || '').toLowerCase().includes(q)
   );
+
+  if (sortField === 'nome') {
+    filtered.sort((a, b) => {
+      const cmp = a.nome.localeCompare(b.nome, 'pt');
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+  } else if (sortField === 'expiry') {
+    filtered.sort((a, b) => {
+      const da = a.expiryDate ? new Date(a.expiryDate) : new Date('9999-12-31');
+      const db = b.expiryDate ? new Date(b.expiryDate) : new Date('9999-12-31');
+      return sortDir === 'asc' ? da - db : db - da;
+    });
+  }
   const tbody = document.getElementById('client-tbody');
   const empty = document.getElementById('empty-state');
 
