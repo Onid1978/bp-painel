@@ -1895,9 +1895,8 @@ function getRelatorioData(year) {
 
   clients.forEach(c => {
     (c.creditsHistory || []).forEach(h => {
-      // Use expiry date (month the line is active) for reporting
-      // h.expiry is pt-PT format: dd/mm/yyyy
-      const src = h.expiry || h.date;
+      // Use payment date (month the credit was purchased) for reporting
+      const src = h.date;
       const parts = src.split('/');
       if (parts.length !== 3) return;
       const d = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
@@ -1918,7 +1917,7 @@ function getAvailableYears() {
   years.add(now);
   clients.forEach(c => {
     (c.creditsHistory || []).forEach(h => {
-      const src = h.expiry || h.date || '';
+      const src = h.date || '';
       const parts = src.split('/');
       if (parts.length === 3) {
         const y = parseInt(parts[2]);
