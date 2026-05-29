@@ -1814,20 +1814,60 @@ function renderCreditsHistory(c) {
   if (!hist.length) { el.innerHTML = ''; return; }
   el.innerHTML = `
     <div class="credits-history-title">Histórico de Créditos</div>
-    ${hist.slice(0,8).map(h => `
-      <div class="history-item">
+    ${hist.slice(0,8).map((h, i) => `
+      <div class="history-item" id="hist-item-${i}">
         <div>
           <span class="history-credits">+${h.amount} crédito(s)</span>
           <span style="color:var(--muted);font-size:12px;margin-left:8px">— ${h.cost}€</span>
         </div>
-        <div style="text-align:right">
-          <div class="history-date">${h.date}</div>
-          <div style="font-size:11px;color:var(--muted)">até ${h.expiry}</div>
+        <div style="text-align:right;display:flex;align-items:center;gap:8px">
+          <div>
+            <div class="history-date">${h.date}</div>
+            <div style="font-size:11px;color:var(--muted)" id="hist-expiry-${i}">até ${h.expiry || '—'}</div>
+          </div>
+          <button onclick="editHistoryExpiry(${i})" style="background:none;border:1px solid var(--line);border-radius:4px;cursor:pointer;color:var(--muted);font-size:11px;padding:3px 7px" title="Editar data de expiração">✏️</button>
         </div>
       </div>
     `).join('')}
   `;
 }
+
+async function editHistoryExpiry(idx) {
+  const c = clients.find(x => x.id === creditsClientId);
+  if (!c) return;
+  const hist = c.creditsHistory || [];
+  const h = hist[idx];
+  if (!h) return;
+
+  // Convert pt-PT expiry to YYYY-MM-DD for date input
+  let currentVal = '';
+  if (h.expiry) {
+    const parts = h.expiry.split('/');
+    if (parts.length === 3) currentVal = `${parts[2]}-${parts[1]}-${parts[0]}`;
+  }
+
+  const newVal = prompt(`Editar data de expiração para este registo:\nAtual: ${h.expiry || '—'}\n\nIntroduza a nova data (formato: DD/MM/AAAA):`, h.expiry || '');
+  if (!newVal || !newVal.trim()) return;
+
+  // Validate format dd/mm/yyyy
+  const parts = newVal.trim().split('/');
+  if (parts.length !== 3 || parts[0].length !== 2 || parts[1].length !== 2 || parts[2].length !== 4) {
+    showToast('Formato inválido. Use DD/MM/AAAA', 'error');
+    return;
+  }
+
+  const clientIdx = clients.findIndex(x => x.id === creditsClientId);
+  clients[clientIdx].creditsHistory[idx].expiry = newVal.trim();
+
+  try {
+    await saveClientToFirestore(clients[clientIdx]);
+    renderCreditsHistory(clients[clientIdx]);
+    showToast('Data de expiração atualizada!', 'success');
+  } catch(e) {
+    showToast('Erro ao guardar.', 'error');
+  }
+}
+window.editHistoryExpiry = editHistoryExpiry;
 
 // ── SALDO DE CRÉDITOS ──
 let saldoCreditos = 0;
