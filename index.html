@@ -1145,6 +1145,31 @@ document.write('<link rel="manifest" href="' + manifestURL + '">');
   </main>
 </div>
 
+<!-- ═══ MODAL DETALHE RELATÓRIO ═══ -->
+<div class="modal-overlay" id="rel-detalhe-overlay">
+  <div class="modal" style="max-width:520px;width:95%">
+    <div class="modal-title" id="rel-detalhe-title">Detalhe do Mês</div>
+    <table style="width:100%;margin-top:12px">
+      <thead>
+        <tr>
+          <th style="text-align:left">Cliente</th>
+          <th style="text-align:center">Créditos</th>
+          <th style="text-align:right">Valor</th>
+          <th style="text-align:right">Data Pag.</th>
+        </tr>
+      </thead>
+      <tbody id="rel-detalhe-tbody"></tbody>
+    </table>
+    <div style="border-top:1px solid var(--line);margin-top:12px;padding-top:12px;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:13px;color:var(--muted)" id="rel-detalhe-total-label"></span>
+      <span style="font-weight:700;color:var(--accent);font-size:18px" id="rel-detalhe-total"></span>
+    </div>
+    <div class="modal-actions" style="margin-top:12px">
+      <button class="btn-save" onclick="closeRelatorioDetalhe()">Fechar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ MODAL ADICIONAR/EDITAR ═══ -->
 <div class="modal-overlay" id="modal-overlay">
   <div class="modal">
@@ -1959,18 +1984,17 @@ window.guardarSaldo  = guardarSaldo;
 const MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
 function getRelatorioData(year) {
-  // Build monthly buckets from all clients' creditsHistory
   const monthly = Array.from({length: 12}, (_, i) => ({
     month: i,
     purchases: 0,
     credits: 0,
     revenue: 0,
-    clientNames: new Set()
+    clientNames: new Set(),
+    detail: [] // per-client detail
   }));
 
   clients.forEach(c => {
     (c.creditsHistory || []).forEach(h => {
-      // Use expiry date (month the line covers) for reporting
       const src = h.expiry || h.date;
       const parts = src.split('/');
       if (parts.length !== 3) return;
@@ -1981,6 +2005,14 @@ function getRelatorioData(year) {
       monthly[m].credits += h.amount || 0;
       monthly[m].revenue += h.cost || 0;
       monthly[m].clientNames.add(c.nome);
+      monthly[m].detail.push({
+        nome: c.nome,
+        amount: h.amount || 0,
+        cost: h.cost || 0,
+        date: h.date,
+        expiry: h.expiry || h.date,
+        newExpiry: h.newExpiry || ''
+      });
     });
   });
   return monthly;
@@ -2045,8 +2077,8 @@ function renderRelatorio() {
   document.getElementById('rel-tbody').innerHTML = data.map((m, i) => {
     if (m.purchases === 0) return '';
     const names = Array.from(m.clientNames).map(n => n.split(' ')[0]).join(', ');
-    return `<tr>
-      <td style="font-weight:600">${MESES_PT[i]} ${year}</td>
+    return `<tr onclick="openRelatorioDetalhe(${i}, ${year})" style="cursor:pointer" title="Clica para ver detalhe">
+      <td style="font-weight:600">${MESES_PT[i]} ${year} <span style="font-size:11px;color:var(--muted)">🔍</span></td>
       <td>${m.purchases}</td>
       <td>${m.credits}</td>
       <td style="font-weight:700;color:var(--accent)">${m.revenue.toFixed(2)}€</td>
@@ -2054,6 +2086,35 @@ function renderRelatorio() {
     </tr>`;
   }).join('') || '';
 }
+
+function openRelatorioDetalhe(monthIdx, year) {
+  const data = getRelatorioData(year);
+  const m = data[monthIdx];
+  document.getElementById('rel-detalhe-title').textContent = `${MESES_PT[monthIdx]} ${year} — Detalhe`;
+  
+  // Sort by cost desc
+  const sorted = m.detail.slice().sort((a, b) => b.cost - a.cost);
+  
+  document.getElementById('rel-detalhe-tbody').innerHTML = sorted.map(d => `
+    <tr>
+      <td style="font-weight:500">${escHtml(d.nome)}</td>
+      <td style="text-align:center;color:var(--muted)">${d.amount}</td>
+      <td style="text-align:right;font-weight:700;color:var(--accent)">${d.cost.toFixed(2)}€</td>
+      <td style="text-align:right;font-size:12px;color:var(--muted)">${d.date}</td>
+    </tr>
+  `).join('');
+
+  const total = m.detail.reduce((s, d) => s + d.cost, 0);
+  document.getElementById('rel-detalhe-total-label').textContent = `${m.detail.length} cliente(s)`;
+  document.getElementById('rel-detalhe-total').textContent = total.toFixed(2) + '€';
+  document.getElementById('rel-detalhe-overlay').classList.add('open');
+}
+
+function closeRelatorioDetalhe() {
+  document.getElementById('rel-detalhe-overlay').classList.remove('open');
+}
+window.openRelatorioDetalhe  = openRelatorioDetalhe;
+window.closeRelatorioDetalhe = closeRelatorioDetalhe;
 
 function exportRelatorioCSV() {
   const year = parseInt(document.getElementById('rel-year').value) || new Date().getFullYear();
