@@ -1525,7 +1525,11 @@ function startRealtimeSync() {
   onSnapshot(collection(db, 'clientes'), snap => {
     clients = snap.docs.map(d => ({ firestoreId: d.id, ...d.data() }));
     renderTable();
+    renderClientCards();
     updateStats();
+    // Refresh dashboard if visible
+    const dash = document.getElementById('page-dashboard');
+    if (dash && dash.style.display !== 'none') renderDashboard();
   });
 }
 
@@ -2088,6 +2092,7 @@ window.editHistoryExpiry = editHistoryExpiry;
 
 // ── DASHBOARD ──
 function renderDashboard() {
+  try {
   const now = new Date(); now.setHours(0,0,0,0);
   const todayStr = new Date().toLocaleDateString('pt-PT');
   const thisMonth = now.getMonth();
@@ -2137,6 +2142,7 @@ function renderDashboard() {
   const maxRev = Math.max(...months6.map(m=>m.rev),1);
   document.getElementById('dash-bar-chart').innerHTML = months6.map(m => { const h=Math.max(m.rev>0?12:0,Math.round((m.rev/maxRev)*100)); const isCur=m.month===thisMonth&&m.year===thisYear; return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px">${m.rev>0?`<div style="font-size:10px;font-weight:700;color:var(--muted)">${m.rev.toFixed(0)}€</div>`:''}<div style="width:100%;height:${h}px;background:${isCur?'var(--accent)':'var(--accent2)'};border-radius:2px 2px 0 0;opacity:${m.rev>0?1:0.15}"></div></div>`; }).join('');
   document.getElementById('dash-bar-labels').innerHTML = months6.map(m => { const isCur=m.month===thisMonth&&m.year===thisYear; return `<div style="flex:1;text-align:center;font-size:10px;font-weight:${isCur?700:500};color:${isCur?'var(--accent)':'var(--muted)'}">${MESES_PT[m.month].slice(0,3)}</div>`; }).join('');
+  } catch(e) { console.error('renderDashboard error:', e); }
 }
 window.renderDashboard = renderDashboard;
 
