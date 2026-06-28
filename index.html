@@ -1587,6 +1587,9 @@ async function doLogin() {
       const el = document.getElementById('page-' + id);
       if (el) el.style.display = id === 'dashboard' ? 'block' : 'none';
     });
+    // Show mobile nav
+    const mobileNav = document.getElementById('mobile-nav');
+    if (mobileNav) mobileNav.style.display = 'block';
     renderDashboard();
     startRealtimeSync();
   } else {
@@ -1599,6 +1602,8 @@ async function doLogin() {
 function doLogout() {
   document.getElementById('dashboard').style.display = 'none';
   document.getElementById('login-screen').style.display = 'flex';
+  const mobileNav = document.getElementById('mobile-nav');
+  if (mobileNav) mobileNav.style.display = 'none';
   document.getElementById('inp-user').value = '';
   document.getElementById('inp-pass').value = '';
 }
@@ -2865,5 +2870,27 @@ function exportRelatorioCSV() { window.exportRelatorioCSV && window.exportRelato
 function alterarSaldo(d)      { window.alterarSaldo && window.alterarSaldo(d); }
 function guardarSaldo(v)      { window.guardarSaldo && window.guardarSaldo(v); }
 </script>
+
+<!-- ═══ MOBILE NAV ═══ -->
+<nav class="mobile-nav" id="mobile-nav" style="display:none">
+  <div class="mobile-nav-inner">
+    <button class="mobile-nav-item active" id="mn-dashboard" onclick="showPageMobile('dashboard')">
+      <span class="mn-icon">🏠</span>Dashboard
+    </button>
+    <button class="mobile-nav-item" id="mn-clientes" onclick="showPageMobile('clientes')">
+      <span class="mn-icon">👥</span>Clientes
+    </button>
+    <button class="mobile-nav-item" id="mn-calendario" onclick="showPageMobile('calendario')">
+      <span class="mn-icon">📅</span>Calendário
+    </button>
+    <button class="mobile-nav-item" id="mn-relatorio" onclick="showPageMobile('relatorio')">
+      <span class="mn-icon">📈</span>Relatório
+    </button>
+    <button class="mobile-nav-item" id="mn-config" onclick="showPageMobile('config')">
+      <span class="mn-icon">⚙️</span>Config
+    </button>
+  </div>
+</nav>
+
 </body>
 </html>
