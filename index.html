@@ -905,6 +905,75 @@ document.write('<link rel="manifest" href="' + manifestURL + '">');
     position: relative;
     z-index: 1;
   }
+
+  /* ══════════════════════════════════════
+     MOBILE & TABLET RESPONSIVE
+  ══════════════════════════════════════ */
+
+  .mobile-nav {
+    display: none;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--sidebar-bg);
+    border-top: 1px solid var(--sidebar-border);
+    z-index: 200;
+    padding: 6px 0 env(safe-area-inset-bottom, 6px);
+  }
+  .mobile-nav-inner { display: flex; justify-content: space-around; align-items: center; }
+  .mobile-nav-item {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 6px 8px; cursor: pointer; border-radius: 8px;
+    color: var(--sidebar-nav-muted); font-size: 10px; font-weight: 500;
+    border: none; background: none; transition: color .15s; min-width: 48px;
+  }
+  .mobile-nav-item .mn-icon { font-size: 20px; }
+  .mobile-nav-item.active { color: var(--accent); }
+
+  .client-card {
+    display: none;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    animation: fadeUp .3s ease both;
+  }
+  .client-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .client-card-body { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+  .client-card-row { display: flex; justify-content: space-between; align-items: center; }
+  .client-card-label { color: var(--muted); font-size: 11px; }
+  .client-card-actions {
+    display: flex; gap: 8px; margin-top: 12px;
+    padding-top: 10px; border-top: 1px solid var(--line);
+  }
+  .client-card-actions button { flex: 1; font-size: 12px; padding: 8px 4px; }
+
+  @media (max-width: 900px) {
+    .sidebar { width: 200px; }
+    .main { margin-left: 200px; padding: 28px 24px; }
+    .stats-row { grid-template-columns: repeat(2, 1fr); gap: 14px; }
+    table th:nth-child(3), table td:nth-child(3),
+    table th:nth-child(6), table td:nth-child(6) { display: none; }
+  }
+
+  @media (max-width: 640px) {
+    .sidebar { display: none; }
+    .main { margin-left: 0; padding: 16px 14px 80px; }
+    .mobile-nav { display: block; }
+    .topbar { margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+    .page-title { font-size: 22px; }
+    .stats-row { grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; }
+    .stat-card { padding: 14px 16px; }
+    .stat-value { font-size: 24px; }
+    table { display: none !important; }
+    thead, tbody, th, td, tr { display: none !important; }
+    .client-card { display: block; }
+    .btn-add { font-size: 12px; padding: 8px 12px; }
+    .panel { padding: 14px; }
+    .panel-header { flex-wrap: wrap; gap: 8px; }
+    .credits-modal, .modal { width: 95vw !important; padding: 20px !important; }
+    #dash-cards { grid-template-columns: repeat(2,1fr) !important; }
+  }
 </style>
 </head>
 <body>
@@ -935,7 +1004,10 @@ document.write('<link rel="manifest" href="' + manifestURL + '">');
 <div id="dashboard">
   <nav class="sidebar">
     <div class="logo">Clientes<span>Pro</span></div>
-    <a class="nav-item active" onclick="showPage('clientes')">
+    <a class="nav-item active" onclick="showPage('dashboard')">
+      <span class="nav-icon">🏠</span> Dashboard
+    </a>
+    <a class="nav-item" onclick="showPage('clientes')">
       <span class="nav-icon">👥</span> Clientes
     </a>
     <a class="nav-item" onclick="showPage('stats')">
@@ -946,6 +1018,9 @@ document.write('<link rel="manifest" href="' + manifestURL + '">');
     </a>
     <a class="nav-item" onclick="showPage('relatorio')">
       <span class="nav-icon">📈</span> Relatório
+    </a>
+    <a class="nav-item" onclick="showPage('calendario')">
+      <span class="nav-icon">📅</span> Calendário
     </a>
     <div class="saldo-widget">
       <div class="saldo-label">💳 Créditos Disponíveis</div>
@@ -970,8 +1045,53 @@ document.write('<link rel="manifest" href="' + manifestURL + '">');
   </nav>
 
   <main class="main">
+    <!-- Dashboard page -->
+    <div id="page-dashboard" style="display:none">
+      <div class="topbar">
+        <div class="page-title">📊 <span>Dashboard</span></div>
+      </div>
+      <div class="stats-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:24px" id="dash-cards"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px">
+        <div class="panel" id="dash-expiring-panel">
+          <div class="panel-title" style="margin-bottom:16px">⚠️ A Expirar em Breve</div>
+          <div id="dash-expiring"></div>
+        </div>
+        <div class="panel" id="dash-expired-panel">
+          <div class="panel-title" style="margin-bottom:16px">⛔ Linha Expirada</div>
+          <div id="dash-expired"></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title" style="margin-bottom:16px">📈 Receita dos Últimos 6 Meses</div>
+        <div id="dash-bar-chart" style="display:flex;align-items:flex-end;gap:8px;height:120px;padding-bottom:24px;position:relative;border-bottom:1px solid var(--line)"></div>
+        <div id="dash-bar-labels" style="display:flex;gap:8px;margin-top:6px"></div>
+      </div>
+    </div>
+
+    <!-- Calendário page -->
+    <div id="page-calendario" style="display:none">
+      <div class="topbar">
+        <div class="page-title">📅 <span>Calendário</span></div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <button onclick="calPrevMonth()" class="btn-add" style="padding:8px 14px">‹</button>
+          <span id="cal-title" style="font-size:15px;font-weight:600;min-width:140px;text-align:center"></span>
+          <button onclick="calNextMonth()" class="btn-add" style="padding:8px 14px">›</button>
+        </div>
+      </div>
+      <div class="panel" style="padding:20px">
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:8px">
+          <div style='text-align:center;font-size:11px;font-weight:700;color:var(--muted);padding:4px'>Dom</div><div style='text-align:center;font-size:11px;font-weight:700;color:var(--muted);padding:4px'>Seg</div><div style='text-align:center;font-size:11px;font-weight:700;color:var(--muted);padding:4px'>Ter</div><div style='text-align:center;font-size:11px;font-weight:700;color:var(--muted);padding:4px'>Qua</div><div style='text-align:center;font-size:11px;font-weight:700;color:var(--muted);padding:4px'>Qui</div><div style='text-align:center;font-size:11px;font-weight:700;color:var(--muted);padding:4px'>Sex</div><div style='text-align:center;font-size:11px;font-weight:700;color:var(--muted);padding:4px'>Sáb</div>
+        </div>
+        <div id="cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px"></div>
+      </div>
+      <div class="panel" style="margin-top:16px">
+        <div class="panel-title" style="margin-bottom:12px">Expirações do Mês</div>
+        <div id="cal-list"></div>
+      </div>
+    </div>
+
     <!-- Clientes page -->
-    <div id="page-clientes">
+    <div id="page-clientes" style="display:none">
       <div class="topbar">
         <div class="page-title">Gestão de <span>Clientes</span></div>
         <div class="admin-badge">
@@ -1023,6 +1143,7 @@ document.write('<link rel="manifest" href="' + manifestURL + '">');
           <div class="empty-icon">📭</div>
           Nenhum cliente encontrado.
         </div>
+        <div id="client-cards-container"></div>
       </div>
     </div>
 
@@ -1432,6 +1553,7 @@ async function doLogin() {
     document.getElementById('admin-name-top').textContent = u.charAt(0).toUpperCase() + u.slice(1);
     await loadClients();
     await loadSaldo();
+    renderDashboard();
     startRealtimeSync();
   } else {
     const err = document.getElementById('login-err');
@@ -1449,14 +1571,16 @@ function doLogout() {
 
 // ── NAVIGATION ──
 function showPage(p) {
-  document.getElementById('page-clientes').style.display  = p === 'clientes'  ? 'block' : 'none';
-  document.getElementById('page-stats').style.display     = p === 'stats'     ? 'block' : 'none';
-  document.getElementById('page-config').style.display    = p === 'config'    ? 'block' : 'none';
-  document.getElementById('page-relatorio').style.display = p === 'relatorio' ? 'block' : 'none';
+  ['dashboard','clientes','stats','config','relatorio','calendario'].forEach(id => {
+    const el = document.getElementById('page-' + id);
+    if (el) el.style.display = p === id ? 'block' : 'none';
+  });
   document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
   event.currentTarget.classList.add('active');
-  if (p === 'stats') renderStats();
-  if (p === 'relatorio') renderRelatorio();
+  if (p === 'dashboard')  renderDashboard();
+  if (p === 'stats')      renderStats();
+  if (p === 'relatorio')  renderRelatorio();
+  if (p === 'calendario') renderCalendario();
   if (p === 'config') {
     document.getElementById('cfg-user').value = ADMIN_USER;
     document.getElementById('cfg-pass').value = '';
@@ -1929,6 +2053,115 @@ async function editHistoryExpiry(idx) {
 }
 window.editHistoryExpiry = editHistoryExpiry;
 
+// ── DASHBOARD ──
+function renderDashboard() {
+  const now = new Date(); now.setHours(0,0,0,0);
+  const todayStr = new Date().toLocaleDateString('pt-PT');
+  const thisMonth = now.getMonth();
+  const thisYear  = now.getFullYear();
+
+  const total    = clients.length;
+  const addedToday = clients.filter(c => c.date === todayStr).length;
+  const active   = clients.filter(c => { if (!c.expiryDate) return false; return new Date(c.expiryDate) >= now; }).length;
+  const expiring = clients.filter(c => { if (!c.expiryDate) return false; const d = Math.round((new Date(c.expiryDate)-now)/86400000); return d>=0&&d<=7; }).length;
+  const expired  = clients.filter(c => { if (!c.expiryDate) return false; return new Date(c.expiryDate) < now; }).length;
+
+  // Revenue this month from creditsHistory
+  let revenueMonth = 0;
+  clients.forEach(c => {
+    (c.creditsHistory||[]).forEach(h => {
+      const src = h.expiry||h.date; const parts = src.split('/');
+      if (parts.length!==3) return;
+      const d = new Date(parseInt(parts[2]),parseInt(parts[1])-1,parseInt(parts[0]));
+      if (d.getMonth()===thisMonth && d.getFullYear()===thisYear) revenueMonth += h.cost||0;
+    });
+  });
+
+  document.getElementById('dash-cards').innerHTML = `
+    <div class="stat-card"><div class="stat-label">Total Clientes</div><div class="stat-value">${total}</div></div>
+    <div class="stat-card"><div class="stat-label">Linhas Ativas</div><div class="stat-value stat-green">${active}</div></div>
+    <div class="stat-card"><div class="stat-label">A Expirar (7d)</div><div class="stat-value" style="color:#e0a060">${expiring}</div></div>
+    <div class="stat-card"><div class="stat-label">Receita ${MESES_PT[thisMonth]}</div><div class="stat-value stat-accent">${revenueMonth.toFixed(2)}€</div></div>
+  `;
+
+  // Expiring soon list
+  const expiringList = clients.filter(c => { if(!c.expiryDate) return false; const d=Math.round((new Date(c.expiryDate)-now)/86400000); return d>=0&&d<=14; })
+    .sort((a,b)=>new Date(a.expiryDate)-new Date(b.expiryDate));
+  document.getElementById('dash-expiring').innerHTML = expiringList.length
+    ? expiringList.map(c => { const d=Math.round((new Date(c.expiryDate)-now)/86400000); return `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px"><span>${escHtml(c.nome)}</span><span style="color:#e0a060;font-weight:600">${d===0?'Hoje':d===1?'Amanhã':d+'d'}</span></div>`; }).join('')
+    : '<div style="color:var(--muted);font-size:13px">Nenhum cliente a expirar em 14 dias</div>';
+
+  // Expired list
+  const expiredList = clients.filter(c => { if(!c.expiryDate) return false; return new Date(c.expiryDate)<now; })
+    .sort((a,b)=>new Date(a.expiryDate)-new Date(b.expiryDate));
+  document.getElementById('dash-expired').innerHTML = expiredList.length
+    ? expiredList.map(c => { const d=Math.abs(Math.round((new Date(c.expiryDate)-now)/86400000)); return `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px"><span>${escHtml(c.nome)}</span><span style="color:#e06060;font-weight:600">há ${d}d</span></div>`; }).join('')
+    : '<div style="color:var(--muted);font-size:13px">Sem linhas expiradas</div>';
+
+  // Last 6 months bar chart
+  const months6 = Array.from({length:6},(_,i)=>{ const d=new Date(thisYear,thisMonth-5+i,1); return {month:d.getMonth(),year:d.getFullYear(),rev:0}; });
+  clients.forEach(c => { (c.creditsHistory||[]).forEach(h => { const src=h.expiry||h.date; const parts=src.split('/'); if(parts.length!==3) return; const d=new Date(parseInt(parts[2]),parseInt(parts[1])-1,parseInt(parts[0])); months6.forEach(m=>{ if(m.month===d.getMonth()&&m.year===d.getFullYear()) m.rev+=h.cost||0; }); }); });
+  const maxRev = Math.max(...months6.map(m=>m.rev),1);
+  document.getElementById('dash-bar-chart').innerHTML = months6.map(m => { const h=Math.max(m.rev>0?12:0,Math.round((m.rev/maxRev)*100)); const isCur=m.month===thisMonth&&m.year===thisYear; return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px">${m.rev>0?`<div style="font-size:10px;font-weight:700;color:var(--muted)">${m.rev.toFixed(0)}€</div>`:''}<div style="width:100%;height:${h}px;background:${isCur?'var(--accent)':'var(--accent2)'};border-radius:2px 2px 0 0;opacity:${m.rev>0?1:0.15}"></div></div>`; }).join('');
+  document.getElementById('dash-bar-labels').innerHTML = months6.map(m => { const isCur=m.month===thisMonth&&m.year===thisYear; return `<div style="flex:1;text-align:center;font-size:10px;font-weight:${isCur?700:500};color:${isCur?'var(--accent)':'var(--muted)'}">${MESES_PT[m.month].slice(0,3)}</div>`; }).join('');
+}
+window.renderDashboard = renderDashboard;
+
+// ── CALENDÁRIO ──
+let calYear = new Date().getFullYear();
+let calMonth = new Date().getMonth();
+
+function renderCalendario() {
+  const now = new Date(); now.setHours(0,0,0,0);
+  document.getElementById('cal-title').textContent = `${MESES_PT[calMonth]} ${calYear}`;
+
+  const firstDay = new Date(calYear, calMonth, 1).getDay();
+  const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
+
+  // Build expiry map for this month
+  const expiryMap = {};
+  clients.forEach(c => {
+    if (!c.expiryDate) return;
+    const d = new Date(c.expiryDate);
+    if (d.getMonth()===calMonth && d.getFullYear()===calYear) {
+      const day = d.getDate();
+      if (!expiryMap[day]) expiryMap[day] = [];
+      expiryMap[day].push(c.nome.split(' ')[0]);
+    }
+  });
+
+  let cells = Array(firstDay).fill('<div></div>');
+  for (let d=1; d<=daysInMonth; d++) {
+    const date = new Date(calYear,calMonth,d);
+    const isToday = date.getTime()===now.getTime();
+    const hasExpiry = expiryMap[d];
+    const isPast = date < now;
+    cells.push(`<div style="
+      min-height:52px;padding:4px 6px;border-radius:6px;border:1px solid ${isToday?'var(--accent)':hasExpiry?'#e0a06066':'var(--line)'};
+      background:${isToday?'var(--accent)':hasExpiry?'#e0a06011':'transparent'};
+      cursor:${hasExpiry?'pointer':'default'};
+      opacity:${isPast&&!hasExpiry?0.4:1}
+    " ${hasExpiry?`title="${hasExpiry.join(', ')}"`:''}>
+      <div style="font-size:12px;font-weight:${isToday?700:500};color:${isToday?'#fff':'var(--ink)'}">${d}</div>
+      ${hasExpiry?`<div style="font-size:10px;color:${isToday?'#fff':'#e0a060'};margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${hasExpiry.join(', ')}</div>`:''}
+    </div>`);
+  }
+
+  document.getElementById('cal-grid').innerHTML = cells.join('');
+
+  // List view
+  const expiring = Object.entries(expiryMap).sort((a,b)=>a[0]-b[0]);
+  document.getElementById('cal-list').innerHTML = expiring.length
+    ? expiring.map(([day,names]) => { const d=new Date(calYear,calMonth,parseInt(day)); const isPast=d<now; const daysLeft=Math.round((d-now)/86400000); return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)"><div><div style="font-weight:600;font-size:14px">${day} ${MESES_PT[calMonth]}</div><div style="font-size:12px;color:var(--muted)">${names.join(', ')}</div></div><div style="font-weight:700;font-size:13px;color:${isPast?'#e06060':daysLeft<=7?'#e0a060':'var(--accent2)'}"> ${isPast?`Expirado há ${Math.abs(daysLeft)}d`:daysLeft===0?'Hoje':daysLeft===1?'Amanhã':`${daysLeft} dias`}</div></div>`; }).join('')
+    : `<div style="color:var(--muted);font-size:13px">Sem expirações em ${MESES_PT[calMonth]} ${calYear}</div>`;
+}
+
+function calPrevMonth() { calMonth--; if(calMonth<0){calMonth=11;calYear--;} renderCalendario(); }
+function calNextMonth() { calMonth++; if(calMonth>11){calMonth=0;calYear++;} renderCalendario(); }
+window.renderCalendario = renderCalendario;
+window.calPrevMonth = calPrevMonth;
+window.calNextMonth = calNextMonth;
+
 // ── SALDO DE CRÉDITOS ──
 let saldoCreditos = 0;
 
@@ -2174,6 +2407,70 @@ function exportRelatorioCSV() {
   showToast(`Excel exportado para ${year}!`, 'success');
 }
 window.renderRelatorio   = renderRelatorio;
+
+// ── MOBILE NAV ──
+function showPageMobile(p) {
+  ['dashboard','clientes','stats','config','relatorio','calendario'].forEach(id => {
+    const el = document.getElementById('page-' + id);
+    if (el) el.style.display = p === id ? 'block' : 'none';
+  });
+  document.querySelectorAll('.mobile-nav-item').forEach(el => el.classList.remove('active'));
+  const mn = document.getElementById('mn-' + p);
+  if (mn) mn.classList.add('active');
+  if (p === 'dashboard')  renderDashboard();
+  if (p === 'relatorio')  renderRelatorio();
+  if (p === 'calendario') renderCalendario();
+  if (p === 'clientes')   { renderTable(); renderClientCards(); }
+  if (p === 'config') {
+    document.getElementById('cfg-user').value = ADMIN_USER;
+    document.getElementById('cfg-pass').value = '';
+    document.getElementById('cfg-pass2').value = '';
+    document.getElementById('cfg-current').value = '';
+    document.getElementById('cfg-msg').textContent = '';
+  }
+}
+window.showPageMobile = showPageMobile;
+
+function renderClientCards() {
+  const q = (document.getElementById('search-input')?.value || '').toLowerCase();
+  let filtered = clients.filter(c =>
+    c.nome.toLowerCase().includes(q) || (c.tel || '').toLowerCase().includes(q)
+  );
+  if (sortField === 'nome') filtered.sort((a,b) => { const cmp=a.nome.localeCompare(b.nome,'pt'); return sortDir==='asc'?cmp:-cmp; });
+  else if (sortField === 'expiry') filtered.sort((a,b) => { const da=a.expiryDate?new Date(a.expiryDate):new Date('9999-12-31'); const db=b.expiryDate?new Date(b.expiryDate):new Date('9999-12-31'); return sortDir==='asc'?da-db:db-da; });
+
+  const container = document.getElementById('client-cards-container');
+  if (!container) return;
+  if (!filtered.length) { container.innerHTML = ''; return; }
+  container.innerHTML = filtered.map(c => `
+    <div class="client-card">
+      <div class="client-card-header">
+        <div class="avatar" style="background:${getColor(c.nome)};flex-shrink:0">${c.nome[0].toUpperCase()}</div>
+        <div>
+          <div style="font-weight:600;font-size:15px">${escHtml(c.nome)}</div>
+          ${c.tel ? `<div style="font-size:12px;color:var(--muted)">${escHtml(c.tel)}</div>` : ''}
+        </div>
+      </div>
+      <div class="client-card-body">
+        <div class="client-card-row">
+          <span class="client-card-label">Linha Ativa</span>
+          <span>${expiryBadge(c)}</span>
+        </div>
+        ${c.clientUser ? `<div class="client-card-row"><span class="client-card-label">Utilizador</span><span style="font-size:12px">👤 ${escHtml(c.clientUser)}</span></div>` : ''}
+        <div class="client-card-row">
+          <span class="client-card-label">Adicionado</span>
+          <span style="font-size:12px;color:var(--muted)">${c.date}</span>
+        </div>
+      </div>
+      <div class="client-card-actions">
+        <button class="btn-credits" onclick="openCreditsModal(${c.id})">💳 Créditos</button>
+        <button class="btn-edit" onclick="openEdit(${c.id})">✏️ Editar</button>
+        <button class="btn-del" onclick="deleteClient(${c.id})">🗑</button>
+      </div>
+    </div>
+  `).join('');
+}
+window.renderClientCards = renderClientCards;
 window.exportRelatorioCSV = exportRelatorioCSV;
 
 // ── CONFIG ──
