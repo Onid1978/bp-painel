@@ -974,6 +974,24 @@ document.write('<link rel="manifest" href="' + manifestURL + '">');
     .panel-header { flex-wrap: wrap; gap: 8px; }
     .credits-modal, .modal { width: 95vw !important; padding: 20px !important; }
     #dash-cards { grid-template-columns: repeat(2,1fr) !important; }
+    .mobile-sort-bar { display: flex !important; }
+  }
+  .mobile-sort-btn {
+    flex: 1;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 9px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink);
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .mobile-sort-btn.active {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
   }
 </style>
 </head>
@@ -1128,7 +1146,11 @@ document.write('<link rel="manifest" href="' + manifestURL + '">');
           </div>
         </div>
         <div class="search-bar">
-          <input type="text" id="search-input" placeholder="🔍  Pesquisar por nome ou telefone…" oninput="renderTable()">
+          <input type="text" id="search-input" placeholder="🔍  Pesquisar por nome ou telefone…" oninput="renderTable(); renderClientCards();">
+        </div>
+        <div class="mobile-sort-bar" style="display:none;gap:8px;margin-bottom:14px">
+          <button class="mobile-sort-btn" id="msort-nome" onclick="toggleSort('nome'); renderClientCards();">Nome <span id="msort-icon-nome"></span></button>
+          <button class="mobile-sort-btn" id="msort-expiry" onclick="toggleSort('expiry'); renderClientCards();">Linha Ativa <span id="msort-icon-expiry"></span></button>
         </div>
         <table>
           <thead>
@@ -1681,9 +1703,16 @@ function toggleSort(field) {
     sortField = field;
     sortDir = 'asc';
   }
-  // Update icons
-  document.getElementById('sort-icon-nome').textContent   = sortField === 'nome'   ? (sortDir === 'asc' ? ' ↑' : ' ↓') : '';
-  document.getElementById('sort-icon-expiry').textContent = sortField === 'expiry' ? (sortDir === 'asc' ? ' ↑' : ' ↓') : '';
+  const iconNome   = sortField === 'nome'   ? (sortDir === 'asc' ? ' ↑' : ' ↓') : '';
+  const iconExpiry = sortField === 'expiry' ? (sortDir === 'asc' ? ' ↑' : ' ↓') : '';
+  document.getElementById('sort-icon-nome').textContent   = iconNome;
+  document.getElementById('sort-icon-expiry').textContent = iconExpiry;
+  const msortNome = document.getElementById('msort-icon-nome');
+  const msortExpiry = document.getElementById('msort-icon-expiry');
+  if (msortNome) msortNome.textContent = iconNome;
+  if (msortExpiry) msortExpiry.textContent = iconExpiry;
+  document.getElementById('msort-nome')?.classList.toggle('active', sortField === 'nome');
+  document.getElementById('msort-expiry')?.classList.toggle('active', sortField === 'expiry');
   renderTable();
 }
 window.toggleSort = toggleSort;
