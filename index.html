@@ -976,6 +976,25 @@ document.write('<link rel="manifest" href="' + manifestURL + '">');
     #dash-cards { grid-template-columns: repeat(2,1fr) !important; }
     .mobile-sort-bar { display: flex !important; }
   }
+  .mes-check-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    background: var(--card);
+    transition: background .15s;
+    user-select: none;
+  }
+  .mes-check-label:has(input:checked) {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+  .mes-check-label input { display: none; }
   .mobile-sort-btn {
     flex: 1;
     background: var(--card);
@@ -1141,7 +1160,7 @@ document.write('<link rel="manifest" href="' + manifestURL + '">');
           <div class="panel-title">Lista de Clientes</div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn-add" onclick="printClientes('todos')" style="background:var(--card);color:var(--ink);border:1px solid var(--line)" onmouseover="this.style.background='var(--line)'" onmouseout="this.style.background='var(--card)'">🖨️ Imprimir Todos</button>
-            <button class="btn-add" onclick="printClientes('mes')" style="background:var(--card);color:var(--ink);border:1px solid var(--line)" onmouseover="this.style.background='var(--line)'" onmouseout="this.style.background='var(--card)'">🖨️ Expiram Este Mês</button>
+            <button class="btn-add" onclick="openPrintMesModal()" style="background:var(--card);color:var(--ink);border:1px solid var(--line)" onmouseover="this.style.background='var(--line)'" onmouseout="this.style.background='var(--card)'">🖨️ Expiram por Mês</button>
             <button class="btn-add" onclick="openModal()">＋ &nbsp;Novo Cliente</button>
           </div>
         </div>
@@ -2559,10 +2578,105 @@ function exportRelatorioCSV() {
 window.renderRelatorio   = renderRelatorio;
 
 // ── IMPRESSÃO ──
-function printClientes(mode) {
+function openPrintMesModal() {
+  const now = new Date();
+  document.getElementById('print-mes-year').value = now.getFullYear();
+  // Check current month by default
+  document.querySelectorAll('#print-mes-checkboxes input[type=checkbox]').forEach(cb => {
+    cb.checked = parseInt(cb.value) === now.getMonth();
+  });
+  document.getElementById('print-mes-overlay').classList.add('open');
+}
+function closePrintMesModal() {
+  document.getElementById('print-mes-overlay').classList.remove('open');
+}
+function toggleAllMeses(val) {
+  document.querySelectorAll('#print-mes-checkboxes input[type=checkbox]').forEach(cb => cb.checked = val);
+}
+function printMesEscolhido() {
+  const year = parseInt(document.getElementById('print-mes-year').value);
+  const selectedMonths = Array.from(document.querySelectorAll('#print-mes-checkboxes input[type=checkbox]:checked'))
+    .map(cb => parseInt(cb.value))
+    .sort((a,b) => a-b);
+  if (!selectedMonths.length) { showToast('Seleciona pelo menos um mês!', 'error'); return; }
+  closePrintMesModal();
+  printClientesMeses(selectedMonths, year);
+}
+window.openPrintMesModal  = openPrintMesModal;
+window.closePrintMesModal = closePrintMesModal;
+window.toggleAllMeses     = toggleAllMeses;
+window.printMesEscolhido  = printMesEscolhido;
+
+function printClientesMeses(months, year) {
+  const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   const now = new Date(); now.setHours(0,0,0,0);
-  const thisMonth = now.getMonth();
-  const thisYear  = now.getFullYear();
+
+  const sections = months.map((month, idx) => {
+    const lista = clients
+      .filter(c => {
+        if (!c.expiryDate) return false;
+        const d = new Date(c.expiryDate);
+        return d.getMonth() === month && d.getFullYear() === year;
+      })
+      .sort((a,b) => a.nome.localeCompare(b.nome,'pt'));
+
+    const rows = lista.map((c, i) => {
+      const exp = c.expiryDate ? new Date(c.expiryDate) : null;
+      const diff = exp ? Math.round((exp - now) / 86400000) : null;
+      const linhaStatus = !exp ? '—' : diff < 0 ? `Expirado há ${Math.abs(diff)}d` : diff === 0 ? 'Hoje' : `${exp.toLocaleDateString('pt-PT')} (${diff}d)`;
+      return `<tr>
+        <td>${i+1}</td>
+        <td><strong>${c.nome}</strong></td>
+        <td>${c.tel || '—'}</td>
+        <td>${linhaStatus}</td>
+        <td>${c.clientUser || '—'}</td>
+      </tr>`;
+    }).join('');
+
+    const pageBreak = idx < months.length - 1 ? 'page-break-after: always;' : '';
+    return `<div style="${pageBreak}">
+      <h2 style="font-size:18px;color:#c8622a;border-bottom:2px solid #c8622a;padding-bottom:8px;margin-bottom:16px">${MESES[month]} ${year} <span style="font-size:13px;color:#666;font-weight:400">— ${lista.length} cliente(s)</span></h2>
+      ${lista.length ? `<table>
+        <thead><tr><th>#</th><th>Nome</th><th>Telefone</th><th>Linha Ativa Até</th><th>Utilizador</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>` : '<p style="color:#999;font-style:italic">Sem clientes a expirar neste mês.</p>'}
+    </div>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<title>Clientes a Expirar — ${months.map(m=>MESES[m]).join(', ')} ${year}</title>
+<style>
+  body { font-family: 'Segoe UI', sans-serif; padding: 32px; color: #1a1a1a; }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  .sub { font-size: 13px; color: #666; margin-bottom: 28px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 8px; }
+  th { background: #c8622a; color: #fff; padding: 9px 12px; text-align: left; font-weight: 600; }
+  td { padding: 8px 12px; border-bottom: 1px solid #eee; }
+  tr:nth-child(even) td { background: #f9f7f4; }
+  @media print { body { padding: 16px; } }
+</style>
+</head>
+<body>
+  <h1>BP · Painel — Clientes a Expirar</h1>
+  <div class="sub">Gerado em ${new Date().toLocaleDateString('pt-PT')} às ${new Date().toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'})} · ${months.map(m=>MESES[m]).join(', ')} ${year}</div>
+  ${sections}
+  <script>window.onload = () => { window.print(); }<\/script>
+</body>
+</html>`;
+
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+}
+window.printClientesMeses = printClientesMeses;
+
+function printClientes(mode, chosenMonth, chosenYear) {
+  const now = new Date(); now.setHours(0,0,0,0);
+  const thisMonth = chosenMonth !== undefined ? chosenMonth : now.getMonth();
+  const thisYear  = chosenYear  !== undefined ? chosenYear  : now.getFullYear();
   const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
   let lista = clients.slice().sort((a,b) => a.nome.localeCompare(b.nome,'pt'));
@@ -2899,6 +3013,42 @@ function exportRelatorioCSV() { window.exportRelatorioCSV && window.exportRelato
 function alterarSaldo(d)      { window.alterarSaldo && window.alterarSaldo(d); }
 function guardarSaldo(v)      { window.guardarSaldo && window.guardarSaldo(v); }
 </script>
+
+<!-- ═══ MODAL IMPRIMIR MÊS ═══ -->
+<div class="modal-overlay" id="print-mes-overlay">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-title">🖨️ Imprimir por Mês</div>
+    <div class="field" style="margin-top:16px">
+      <label>Ano</label>
+      <input type="number" id="print-mes-year" min="2020" max="2030" style="width:100%;background:var(--card);border:1px solid var(--line);border-radius:4px;padding:10px 12px;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--ink);outline:none;box-sizing:border-box">
+    </div>
+    <div class="field" style="margin-top:14px">
+      <label>Meses <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)">(seleciona um ou mais)</span></label>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px" id="print-mes-checkboxes">
+        <label class="mes-check-label"><input type="checkbox" value="0"> Janeiro</label>
+        <label class="mes-check-label"><input type="checkbox" value="1"> Fevereiro</label>
+        <label class="mes-check-label"><input type="checkbox" value="2"> Março</label>
+        <label class="mes-check-label"><input type="checkbox" value="3"> Abril</label>
+        <label class="mes-check-label"><input type="checkbox" value="4"> Maio</label>
+        <label class="mes-check-label"><input type="checkbox" value="5"> Junho</label>
+        <label class="mes-check-label"><input type="checkbox" value="6"> Julho</label>
+        <label class="mes-check-label"><input type="checkbox" value="7"> Agosto</label>
+        <label class="mes-check-label"><input type="checkbox" value="8"> Setembro</label>
+        <label class="mes-check-label"><input type="checkbox" value="9"> Outubro</label>
+        <label class="mes-check-label"><input type="checkbox" value="10"> Novembro</label>
+        <label class="mes-check-label"><input type="checkbox" value="11"> Dezembro</label>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:8px">
+        <button onclick="toggleAllMeses(true)" style="font-size:11px;background:none;border:1px solid var(--line);border-radius:4px;padding:4px 10px;cursor:pointer;color:var(--muted)">Selecionar Todos</button>
+        <button onclick="toggleAllMeses(false)" style="font-size:11px;background:none;border:1px solid var(--line);border-radius:4px;padding:4px 10px;cursor:pointer;color:var(--muted)">Limpar</button>
+      </div>
+    </div>
+    <div class="modal-actions" style="margin-top:20px">
+      <button class="btn-cancel" onclick="closePrintMesModal()">Cancelar</button>
+      <button class="btn-save" onclick="printMesEscolhido()">🖨️ Imprimir</button>
+    </div>
+  </div>
+</div>
 
 <!-- ═══ MOBILE NAV ═══ -->
 <nav class="mobile-nav" id="mobile-nav" style="display:none">
