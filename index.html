@@ -1861,13 +1861,15 @@ function updateWaPreview() {
   const primeiroNome = c.nome.split(' ')[0];
   const valor = document.getElementById('wa-aviso-valor').value || '?';
 
+  const acesso = c.clientUser ? ` com o user ${c.clientUser}` : '';
+
   let msg = '';
   if (diffDays < 0) {
-    msg = `Olá ${primeiroNome}, a sua linha expirou há ${Math.abs(diffDays)} dia(s), no dia ${dataFormatada}. Vais renovar? Se sim o valor é ${valor}€.`;
+    msg = `Olá ${primeiroNome}, a sua linha ativa${acesso} expirou há ${Math.abs(diffDays)} dia(s), no dia ${dataFormatada}. Vais renovar? Se sim o valor é ${valor}€.`;
   } else if (diffDays === 0) {
-    msg = `Olá ${primeiroNome}, a sua linha ativa expira hoje! Vais renovar? Se sim o valor é ${valor}€.`;
+    msg = `Olá ${primeiroNome}, a sua linha ativa${acesso} expira hoje! Vais renovar? Se sim o valor é ${valor}€.`;
   } else {
-    msg = `Olá ${primeiroNome}, a sua linha ativa expira em ${diffDays} dia(s), no dia ${dataFormatada}. Vais renovar? Se sim o valor é ${valor}€.`;
+    msg = `Olá ${primeiroNome}, a sua linha ativa${acesso} expira em ${diffDays} dias, no dia ${dataFormatada}. Vais renovar? Se sim o valor é ${valor}€.`;
   }
   document.getElementById('wa-aviso-preview').textContent = msg;
 }
