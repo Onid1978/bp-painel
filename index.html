@@ -958,6 +958,8 @@ document.write('<link rel="manifest" href="' + manifestURL + '">');
 
   @media (max-width: 640px) {
     #rel-bottom-grid { grid-template-columns: 1fr !important; }
+    #sim-inputs-grid { grid-template-columns: 1fr !important; }
+    #sim-results { grid-template-columns: repeat(2,1fr) !important; }
     .sidebar { display: none; }
     .main { margin-left: 0; padding: 16px 14px 80px; }
     .mobile-nav { display: block; }
@@ -1328,6 +1330,63 @@ document.write('<link rel="manifest" href="' + manifestURL + '">');
           Sem dados de créditos para este ano.
         </div>
       </div>
+
+      <!-- Simulador -->
+      <div class="panel" style="margin-top:24px;padding:28px">
+        <div class="panel-title" style="margin-bottom:6px">🧮 Simulador de Receita</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:20px">Calcula quanto podes ganhar com mais clientes</div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:24px" id="sim-inputs-grid">
+          <div class="field">
+            <label>Clientes atuais</label>
+            <input type="number" id="sim-atuais" min="0" value="0" oninput="calcSimulador()" style="width:100%;box-sizing:border-box">
+          </div>
+          <div class="field">
+            <label>Novos clientes</label>
+            <input type="number" id="sim-novos" min="0" value="5" oninput="calcSimulador()" style="width:100%;box-sizing:border-box">
+          </div>
+          <div class="field">
+            <label>Preço por cliente (€)</label>
+            <input type="number" id="sim-preco" min="0" value="6" oninput="calcSimulador()" style="width:100%;box-sizing:border-box">
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px" id="sim-results">
+          <div class="stat-card" style="text-align:center">
+            <div class="stat-label">Total Clientes</div>
+            <div class="stat-value" id="sim-total-clientes">0</div>
+          </div>
+          <div class="stat-card" style="text-align:center">
+            <div class="stat-label">Receita Mensal</div>
+            <div class="stat-value stat-accent" id="sim-receita-mes">0€</div>
+          </div>
+          <div class="stat-card" style="text-align:center">
+            <div class="stat-label">Receita Anual</div>
+            <div class="stat-value stat-green" id="sim-receita-ano">0€</div>
+          </div>
+          <div class="stat-card" style="text-align:center">
+            <div class="stat-label">Lucro Mensal (50%)</div>
+            <div class="stat-value" id="sim-lucro-mes" style="color:#7b5ea7">0€</div>
+          </div>
+        </div>
+
+        <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--line)">
+          <div style="font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Progressão por Número de Clientes</div>
+          <div id="sim-tabela" style="overflow-x:auto">
+            <table style="width:100%;font-size:13px">
+              <thead>
+                <tr>
+                  <th style="text-align:left">Clientes</th>
+                  <th style="text-align:right">Receita/Mês</th>
+                  <th style="text-align:right">Receita/Ano</th>
+                  <th style="text-align:right">Lucro/Mês</th>
+                </tr>
+              </thead>
+              <tbody id="sim-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
   </main>
 </div>
@@ -1659,7 +1718,7 @@ function showPage(p) {
   event.currentTarget.classList.add('active');
   if (p === 'dashboard')  renderDashboard();
   if (p === 'stats')      renderStats();
-  if (p === 'relatorio')  renderRelatorio();
+  if (p === 'relatorio')  { renderRelatorio(); setTimeout(() => { document.getElementById('sim-atuais').value = clients.length; calcSimulador(); }, 100); }
   if (p === 'calendario') renderCalendario();
   if (p === 'config') {
     document.getElementById('cfg-user').value = ADMIN_USER;
@@ -2571,6 +2630,42 @@ function closeRelatorioDetalhe() {
 }
 window.openRelatorioDetalhe  = openRelatorioDetalhe;
 window.closeRelatorioDetalhe = closeRelatorioDetalhe;
+
+function calcSimulador() {
+  const atuais = parseInt(document.getElementById('sim-atuais').value) || 0;
+  const novos  = parseInt(document.getElementById('sim-novos').value) || 0;
+  const preco  = parseFloat(document.getElementById('sim-preco').value) || 0;
+  const custo  = preco / 2; // 50% margin assumption
+
+  const total = atuais + novos;
+  const receitaMes = total * preco;
+  const receitaAno = receitaMes * 12;
+  const lucroMes   = total * (preco - custo);
+
+  document.getElementById('sim-total-clientes').textContent = total;
+  document.getElementById('sim-receita-mes').textContent    = receitaMes.toFixed(2) + '€';
+  document.getElementById('sim-receita-ano').textContent    = receitaAno.toFixed(2) + '€';
+  document.getElementById('sim-lucro-mes').textContent      = lucroMes.toFixed(2) + '€';
+
+  // Progressão table — current, +5, +10, +15, +20, +30, +50
+  const steps = [0, 5, 10, 15, 20, 30, 50].map(n => atuais + n).filter((v,i,a) => a.indexOf(v)===i);
+  if (!steps.includes(total)) steps.push(total);
+  steps.sort((a,b) => a-b);
+
+  document.getElementById('sim-tbody').innerHTML = steps.map(n => {
+    const isTarget = n === total;
+    const rm = n * preco;
+    const ra = rm * 12;
+    const lm = n * (preco - custo);
+    return `<tr style="background:${isTarget ? 'var(--accent)11' : 'transparent'};font-weight:${isTarget ? 700 : 400}">
+      <td style="padding:8px 12px;border-bottom:1px solid var(--line)">${n} clientes${isTarget ? ' ← atual' : ''}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid var(--line);text-align:right;color:var(--accent)">${rm.toFixed(2)}€</td>
+      <td style="padding:8px 12px;border-bottom:1px solid var(--line);text-align:right;color:var(--accent2)">${ra.toFixed(2)}€</td>
+      <td style="padding:8px 12px;border-bottom:1px solid var(--line);text-align:right;color:#7b5ea7">${lm.toFixed(2)}€</td>
+    </tr>`;
+  }).join('');
+}
+window.calcSimulador = calcSimulador;
 
 function exportRelatorioCSV() {
   const year = parseInt(document.getElementById('rel-year').value) || new Date().getFullYear();
