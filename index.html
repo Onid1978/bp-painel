@@ -1070,6 +1070,19 @@ document.write('<link rel="manifest" href="' + manifestURL + '">');
         <button class="saldo-btn saldo-btn-plus" onclick="alterarSaldo(1)" title="Adicionar crédito">+</button>
       </div>
       <div class="saldo-hint" id="saldo-hint"></div>
+      <div style="border-top:1px solid var(--sidebar-border);margin-top:10px;padding-top:10px">
+        <div style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--sidebar-nav-muted);margin-bottom:8px">Carregar Créditos</div>
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
+          <span style="font-size:10px;color:var(--sidebar-nav-muted);width:50px">Qtd.</span>
+          <input type="number" id="carga-qtd" min="1" placeholder="Ex: 10" oninput="calcCarga()" style="flex:1;background:var(--sidebar-border);border:none;border-radius:4px;padding:5px 8px;font-size:12px;color:var(--white);outline:none;width:0">
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
+          <span style="font-size:10px;color:var(--sidebar-nav-muted);width:50px">Paguei</span>
+          <input type="number" id="carga-custo" min="0" step="0.5" placeholder="Ex: 30€" oninput="calcCarga()" style="flex:1;background:var(--sidebar-border);border:none;border-radius:4px;padding:5px 8px;font-size:12px;color:var(--white);outline:none;width:0">
+        </div>
+        <div id="carga-resultado" style="font-size:11px;color:var(--sidebar-nav-muted);min-height:30px;line-height:1.6"></div>
+        <button onclick="aplicarCarga()" style="width:100%;margin-top:6px;background:var(--accent);border:none;border-radius:4px;padding:7px;font-size:12px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit">Adicionar ao Saldo</button>
+      </div>
     </div>
     <div class="sidebar-footer">
       <button class="theme-toggle" onclick="toggleTheme()">
@@ -1717,6 +1730,7 @@ function showPage(p) {
   document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
   event.currentTarget.classList.add('active');
   if (p === 'dashboard')  renderDashboard();
+  if (p === 'clientes')   { renderTable(); renderClientCards(); }
   if (p === 'stats')      renderStats();
   if (p === 'relatorio')  { renderRelatorio(); setTimeout(() => { document.getElementById('sim-atuais').value = clients.length; calcSimulador(); }, 100); }
   if (p === 'calendario') renderCalendario();
@@ -2416,6 +2430,33 @@ function guardarSaldo(val) {
   saveSaldoFirestore(novo);
 }
 window.alterarSaldo  = alterarSaldo;
+
+function calcCarga() {
+  const qtd   = parseInt(document.getElementById('carga-qtd').value) || 0;
+  const custo = parseFloat(document.getElementById('carga-custo').value) || 0;
+  const res   = document.getElementById('carga-resultado');
+  if (!qtd) { res.innerHTML = ''; return; }
+  const receitaPrev = qtd * 6;
+  const lucro = custo > 0 ? receitaPrev - custo : null;
+  res.innerHTML = `
+    <div style="display:flex;justify-content:space-between"><span>Receita prevista:</span><span style="color:var(--accent);font-weight:700">${receitaPrev.toFixed(2)}€</span></div>
+    ${lucro !== null ? `<div style="display:flex;justify-content:space-between"><span>Lucro previsto:</span><span style="color:#3a6b4f;font-weight:700">${lucro.toFixed(2)}€</span></div>` : ''}
+    ${custo > 0 && qtd > 0 ? `<div style="display:flex;justify-content:space-between"><span>Custo/crédito:</span><span>${(custo/qtd).toFixed(2)}€</span></div>` : ''}
+  `;
+}
+async function aplicarCarga() {
+  const qtd = parseInt(document.getElementById('carga-qtd').value) || 0;
+  if (!qtd) { showToast('Introduz a quantidade de créditos!', 'error'); return; }
+  saldoCreditos = Math.max(0, saldoCreditos + qtd);
+  renderSaldo();
+  await saveSaldoFirestore(saldoCreditos);
+  document.getElementById('carga-qtd').value = '';
+  document.getElementById('carga-custo').value = '';
+  document.getElementById('carga-resultado').innerHTML = '';
+  showToast(`+${qtd} créditos adicionados ao saldo!`, 'success');
+}
+window.calcCarga    = calcCarga;
+window.aplicarCarga = aplicarCarga;
 window.guardarSaldo  = guardarSaldo;
 
 // ── RELATÓRIO ──
