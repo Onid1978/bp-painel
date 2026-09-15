@@ -2752,8 +2752,9 @@ function openCalDayModal(day) {
         <button onclick="this.closest('[onclick]').remove()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer">✕</button>
       </div>
       ${cls.map(c => `<div style="padding:12px 0;border-top:1px solid var(--line)">
-        <div style="font-weight:600;font-size:14px;margin-bottom:8px">${escHtml(c.nome)}</div>
-        <div style="display:flex;gap:8px">
+        <div style="font-weight:600;font-size:14px">${escHtml(c.nome)}</div>
+        ${c.clientUser ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">👤 ${escHtml(c.clientUser)}</div>` : ''}
+        <div style="display:flex;gap:8px;margin-top:8px">
           ${c.tel ? `<a href="https://wa.me/${c.tel.replace(/[^0-9]/g,'')}" target="_blank" style="flex:1;text-align:center;background:rgba(37,211,102,0.12);border:1px solid rgba(37,211,102,0.25);color:#25d366;border-radius:8px;padding:8px;font-size:12px;font-weight:600;text-decoration:none">💬 WhatsApp</a>` : ''}
           <button onclick="document.querySelector('[onclick]').remove();openCreditsModal(${c.id})" style="flex:1;background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.25);color:#a5b4fc;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">💳 Renovar</button>
         </div>
