@@ -2742,21 +2742,25 @@ function openCalDayModal(day) {
   const daysLeft = Math.round((new Date(calYear,calMonth,day)-now)/86400000);
   const label = daysLeft<0?`Expirado há ${Math.abs(daysLeft)}d`:daysLeft===0?'Hoje':daysLeft===1?'Amanhã':`${daysLeft} dias`;
 
-  const html = `<div style="position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center" onclick="this.remove()">
+  // Remove existing modal if open
+  const existing = document.getElementById('cal-day-modal');
+  if (existing) existing.remove();
+
+  const html = `<div id="cal-day-modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center" onclick="document.getElementById('cal-day-modal').remove()">
     <div style="background:#131c2e;border:1px solid rgba(99,102,241,0.2);border-radius:16px;padding:28px;min-width:320px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,0.6)" onclick="event.stopPropagation()">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
         <div>
           <div style="font-size:18px;font-weight:700">${day} ${MESES_PT[calMonth]} ${calYear}</div>
           <div style="font-size:12px;color:#fbbf24;margin-top:2px">${label}</div>
         </div>
-        <button onclick="this.closest('[onclick]').remove()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer">✕</button>
+        <button onclick="document.getElementById('cal-day-modal').remove()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer">✕</button>
       </div>
       ${cls.map(c => `<div style="padding:12px 0;border-top:1px solid var(--line)">
         <div style="font-weight:600;font-size:14px">${escHtml(c.nome)}</div>
         ${c.clientUser ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">👤 ${escHtml(c.clientUser)}</div>` : ''}
         <div style="display:flex;gap:8px;margin-top:8px">
           ${c.tel ? `<a href="https://wa.me/${c.tel.replace(/[^0-9]/g,'')}" target="_blank" style="flex:1;text-align:center;background:rgba(37,211,102,0.12);border:1px solid rgba(37,211,102,0.25);color:#25d366;border-radius:8px;padding:8px;font-size:12px;font-weight:600;text-decoration:none">💬 WhatsApp</a>` : ''}
-          <button onclick="document.querySelector('[onclick]').remove();openCreditsModal(${c.id})" style="flex:1;background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.25);color:#a5b4fc;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">💳 Renovar</button>
+          <button onclick="document.getElementById('cal-day-modal')?.remove();openCreditsModal(${c.id})" style="flex:1;background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.25);color:#a5b4fc;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">💳 Renovar</button>
         </div>
       </div>`).join('')}
     </div>
