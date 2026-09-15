@@ -2657,7 +2657,7 @@ function renderCalendario() {
   const firstDay = new Date(calYear, calMonth, 1).getDay();
   const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
 
-  // Build expiry map for this month
+  // Build expiry map with full client objects
   const expiryMap = {};
   clients.forEach(c => {
     if (!c.expiryDate) return;
@@ -2665,7 +2665,7 @@ function renderCalendario() {
     if (d.getMonth()===calMonth && d.getFullYear()===calYear) {
       const day = d.getDate();
       if (!expiryMap[day]) expiryMap[day] = [];
-      expiryMap[day].push(c.nome.split(' ')[0]);
+      expiryMap[day].push(c);
     }
   });
 
@@ -2673,27 +2673,97 @@ function renderCalendario() {
   for (let d=1; d<=daysInMonth; d++) {
     const date = new Date(calYear,calMonth,d);
     const isToday = date.getTime()===now.getTime();
-    const hasExpiry = expiryMap[d];
+    const dayClients = expiryMap[d];
     const isPast = date < now;
-    cells.push(`<div style="
-      min-height:52px;padding:4px 6px;border-radius:6px;border:1px solid ${isToday?'var(--accent)':hasExpiry?'#e0a06066':'var(--line)'};
-      background:${isToday?'var(--accent)':hasExpiry?'#e0a06011':'transparent'};
-      cursor:${hasExpiry?'pointer':'default'};
-      opacity:${isPast&&!hasExpiry?0.4:1}
-    " ${hasExpiry?`title="${hasExpiry.join(', ')}"`:''}>
-      <div style="font-size:12px;font-weight:${isToday?700:500};color:${isToday?'#fff':'var(--ink)'}">${d}</div>
-      ${hasExpiry?`<div style="font-size:10px;color:${isToday?'#fff':'#e0a060'};margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${hasExpiry.join(', ')}</div>`:''}
+    const count = dayClients ? dayClients.length : 0;
+
+    let cellContent = `<div style="font-size:12px;font-weight:${isToday?700:600};color:${isToday?'#fff':'var(--ink)'};margin-bottom:2px">${d}</div>`;
+
+    if (dayClients) {
+      if (count <= 2) {
+        cellContent += dayClients.map(c => `<div style="font-size:9px;color:${isToday?'#fff':'#fbbf24'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.nome)}</div>`).join('');
+      } else {
+        cellContent += dayClients.slice(0,2).map(c => `<div style="font-size:9px;color:${isToday?'#fff':'#fbbf24'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.nome)}</div>`).join('');
+        cellContent += `<div style="font-size:9px;color:${isToday?'rgba(255,255,255,0.7)':'var(--muted)'}">+${count-2} mais</div>`;
+      }
+    }
+
+    cells.push(`<div onclick="${dayClients?`openCalDayModal(${d})`:'void(0)'}" style="
+      min-height:58px;padding:5px 6px;border-radius:8px;
+      border:1px solid ${isToday?'#6366f1':dayClients?'rgba(251,191,36,0.35)':'var(--line)'};
+      background:${isToday?'#6366f1':dayClients?'rgba(251,191,36,0.06)':'transparent'};
+      cursor:${dayClients?'pointer':'default'};
+      opacity:${isPast&&!dayClients?0.3:1};
+      transition:background .15s;
+    " ${dayClients?`onmouseover="this.style.background='${isToday?'#5558e3':'rgba(251,191,36,0.12)'}'" onmouseout="this.style.background='${isToday?'#6366f1':'rgba(251,191,36,0.06)'}'"`:''}>
+      ${cellContent}
     </div>`);
   }
 
   document.getElementById('cal-grid').innerHTML = cells.join('');
 
-  // List view
-  const expiring = Object.entries(expiryMap).sort((a,b)=>a[0]-b[0]);
+  // List view with WhatsApp and Renovar buttons
+  const expiring = Object.entries(expiryMap).sort((a,b)=>parseInt(a[0])-parseInt(b[0]));
   document.getElementById('cal-list').innerHTML = expiring.length
-    ? expiring.map(([day,names]) => { const d=new Date(calYear,calMonth,parseInt(day)); const isPast=d<now; const daysLeft=Math.round((d-now)/86400000); return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)"><div><div style="font-weight:600;font-size:14px">${day} ${MESES_PT[calMonth]}</div><div style="font-size:12px;color:var(--muted)">${names.join(', ')}</div></div><div style="font-weight:700;font-size:13px;color:${isPast?'#e06060':daysLeft<=7?'#e0a060':'var(--accent2)'}"> ${isPast?`Expirado há ${Math.abs(daysLeft)}d`:daysLeft===0?'Hoje':daysLeft===1?'Amanhã':`${daysLeft} dias`}</div></div>`; }).join('')
-    : `<div style="color:var(--muted);font-size:13px">Sem expirações em ${MESES_PT[calMonth]} ${calYear}</div>`;
+    ? expiring.map(([day, cls]) => {
+        const d = new Date(calYear,calMonth,parseInt(day));
+        const isPast = d < now;
+        const daysLeft = Math.round((d-now)/86400000);
+        const label = isPast ? `Expirado há ${Math.abs(daysLeft)}d` : daysLeft===0?'Hoje':daysLeft===1?'Amanhã':`${daysLeft} dias`;
+        const color = isPast ? '#f87171' : daysLeft<=7 ? '#fbbf24' : '#34d399';
+        return `<div style="padding:12px 0;border-bottom:1px solid var(--line)">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <div style="font-weight:700;font-size:14px">${day} ${MESES_PT[calMonth]}</div>
+            <div style="font-weight:700;font-size:13px;color:${color}">${label}</div>
+          </div>
+          ${cls.map(c => `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-top:1px solid rgba(255,255,255,0.05)">
+            <div>
+              <div style="font-size:13px;font-weight:500">${escHtml(c.nome)}</div>
+              ${c.tel ? `<div style="font-size:11px;color:var(--muted)">${escHtml(c.tel)}</div>` : ''}
+            </div>
+            <div style="display:flex;gap:6px">
+              ${c.tel ? `<button onclick="sendWhatsAppAviso(${c.id})" style="background:rgba(37,211,102,0.12);border:1px solid rgba(37,211,102,0.25);color:#25d366;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">💬</button>` : ''}
+              <button onclick="openCreditsModal(${c.id})" style="background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.25);color:#a5b4fc;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">💳 Renovar</button>
+            </div>
+          </div>`).join('')}
+        </div>`;
+      }).join('')
+    : `<div style="color:var(--muted);font-size:13px;padding:16px 0">Sem expirações em ${MESES_PT[calMonth]} ${calYear}</div>`;
 }
+
+function openCalDayModal(day) {
+  const now = new Date(); now.setHours(0,0,0,0);
+  const cls = clients.filter(c => {
+    if (!c.expiryDate) return false;
+    const d = new Date(c.expiryDate);
+    return d.getDate()===day && d.getMonth()===calMonth && d.getFullYear()===calYear;
+  });
+  if (!cls.length) return;
+  const daysLeft = Math.round((new Date(calYear,calMonth,day)-now)/86400000);
+  const label = daysLeft<0?`Expirado há ${Math.abs(daysLeft)}d`:daysLeft===0?'Hoje':daysLeft===1?'Amanhã':`${daysLeft} dias`;
+
+  const html = `<div style="position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center" onclick="this.remove()">
+    <div style="background:#131c2e;border:1px solid rgba(99,102,241,0.2);border-radius:16px;padding:28px;min-width:320px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,0.6)" onclick="event.stopPropagation()">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <div>
+          <div style="font-size:18px;font-weight:700">${day} ${MESES_PT[calMonth]} ${calYear}</div>
+          <div style="font-size:12px;color:#fbbf24;margin-top:2px">${label}</div>
+        </div>
+        <button onclick="this.closest('[onclick]').remove()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer">✕</button>
+      </div>
+      ${cls.map(c => `<div style="padding:12px 0;border-top:1px solid var(--line)">
+        <div style="font-weight:600;font-size:14px;margin-bottom:8px">${escHtml(c.nome)}</div>
+        <div style="display:flex;gap:8px">
+          ${c.tel ? `<a href="https://wa.me/${c.tel.replace(/[^0-9]/g,'')}" target="_blank" style="flex:1;text-align:center;background:rgba(37,211,102,0.12);border:1px solid rgba(37,211,102,0.25);color:#25d366;border-radius:8px;padding:8px;font-size:12px;font-weight:600;text-decoration:none">💬 WhatsApp</a>` : ''}
+          <button onclick="document.querySelector('[onclick]').remove();openCreditsModal(${c.id})" style="flex:1;background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.25);color:#a5b4fc;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">💳 Renovar</button>
+        </div>
+      </div>`).join('')}
+    </div>
+  </div>`;
+
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+window.openCalDayModal = openCalDayModal;
 
 function calPrevMonth() { calMonth--; if(calMonth<0){calMonth=11;calYear--;} renderCalendario(); }
 function calNextMonth() { calMonth++; if(calMonth>11){calMonth=0;calYear++;} renderCalendario(); }
